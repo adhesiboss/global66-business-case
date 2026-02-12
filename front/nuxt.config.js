@@ -1,14 +1,18 @@
-require('dotenv').config()
-
 export default {
   ssr: true,
   target: 'server',
   components: true,
 
   modules: ['@nuxtjs/axios'],
-  axios: {
-    baseURL: process.env.API_BASE_URL || 'http://localhost:3001',
+
+  // ✅ Proxy para que /api/* funcione en SSR y client
+  axios: { proxy: true },
+proxy: {
+  '/api/': {
+    target: process.env.API_BASE_URL || 'http://127.0.0.1:3001',
+    changeOrigin: true,
   },
+},
 
   css: ['~/assets/css/tailwind.css'],
 
