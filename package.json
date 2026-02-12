@@ -1,0 +1,12 @@
+{
+  "name": "global66-business-case",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm --prefix back run dev\" \"npm --prefix front run dev\"",
+    "dev:front": "npm --prefix front run dev",
+    "dev:back": "npm --prefix back run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

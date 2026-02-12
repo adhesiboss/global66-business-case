@@ -1,0 +1,5 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.btn-primary { @apply inline-flex items-center justify-center rounded-xl px-5 py-3 font-semibold; }
