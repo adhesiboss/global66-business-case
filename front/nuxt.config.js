@@ -1,31 +1,37 @@
 // front/nuxt.config.js
+
 export default {
   ssr: true,
   target: 'server',
   components: true,
 
-  // ✅ Montamos /api en el MISMO servidor Nuxt (evita Cloudflare 429 del back)
-  serverMiddleware: [{ path: '/api', handler: '~/server/api/index.js' }],
+  /*
+   * ✅ MUY IMPORTANTE
+   * Montamos /api en el MISMO servidor Nuxt.
+   * Esto evita que SSR pegue al BACK (Cloudflare 429).
+   */
+  serverMiddleware: [
+    { path: '/api', handler: '~/server/api/index.js' },
+  ],
 
   modules: ['@nuxtjs/axios'],
 
-  /**
-   * ✅ Clave: para SSR + Browser usamos SAME-ORIGIN por defecto
-   * - asyncData hace $axios.$get('/api/rates'...) -> pega al front (serverMiddleware)
-   * - en browser también pega al mismo dominio del front
+  /*
+   * ✅ Axios SAME-ORIGIN
+   * - En SSR: $axios('/api/...') pega al mismo server Nuxt
+   * - En Browser: igual (mismo dominio del front)
    *
-   * Si algún día quieres apuntar al back live, puedes setear:
-   *   API_BASE_URL=https://global66-business-case-back.onrender.com
-   * y hacer llamadas ABSOLUTAS desde código (no recomendado para SSR por CF).
+   * NO apuntamos al back externo.
    */
   publicRuntimeConfig: {
     axios: {
-      browserBaseURL: process.env.BROWSER_API_BASE_URL || process.env.API_BASE_URL || '/',
+      browserBaseURL: '/', // siempre front
     },
   },
+
   privateRuntimeConfig: {
     axios: {
-      baseURL: process.env.API_BASE_URL || 'http://localhost:3000',
+      baseURL: '/', // SSR usa mismo servidor
     },
   },
 
@@ -47,6 +53,10 @@ export default {
     meta: [
       { charset: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { hid: 'format-detection', name: 'format-detection', content: 'telephone=no' },
+    ],
+    link: [
+      { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
     ],
   },
 }
