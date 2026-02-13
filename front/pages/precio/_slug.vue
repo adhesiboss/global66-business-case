@@ -114,7 +114,7 @@
             1 {{ base }} = {{ formattedRate }} {{ target }}
           </div>
 
-          <p class="mt-4 md:mt-6 text-base md:text-xl opacity-90">
+          <p class="mt-4 md:mt-6 text-base md:text- opacity-90">
             Tipo de cambio para {{ asOfDate }} a las {{ asOfTime }} UTC
           </p>
         </div>
@@ -272,9 +272,9 @@ const CURRENCY_MAP = {
 }
 
 const FLAG_BY_TARGET = {
-  CLP: { src: '/images/Flag.svg', alt: 'Chile' },
-  PEN: { src: '/images/Flag-1.svg', alt: 'Perú' },
-  USD: { src: '/images/united-states-of-america.svg', alt: 'USA' },
+  CLP: { src: '/images/Flag.svg', alt: 'Chile' }, // CLP
+  PEN: { src: '/images/Flag-1.svg', alt: 'Perú' }, // PEN
+  USD: { src: '/images/united-states-of-america.svg', alt: 'USA' }, // USD
 }
 
 export default {
@@ -288,40 +288,54 @@ export default {
     }
   },
 
-  async asyncData({ params, $axios, error }) {
-  const CURRENCY_MAP = {
-    'peso-chileno': 'CLP',
-    'sol-peruano': 'PEN',
-    dolares: 'USD',
-  }
+  async asyncData({ params, $axios, error, req }) {
+    const slug = params.slug
+    const target = CURRENCY_MAP[slug]
+    if (!target) return error({ statusCode: 404, message: 'Divisa no soportada' })
 
-  const slug = params.slug
-  const target = CURRENCY_MAP[slug]
-  if (!target) return error({ statusCode: 404, message: 'Divisa no soportada' })
+    const host = req?.headers?.host || 'localhost:3000'
+    const protocol = host.includes('localhost') ? 'http' : 'https'
+    const origin = `${protocol}://${host}`
 
-  const base = slug === 'dolares' ? 'CLP' : 'USD'
+    // 👉 Reglas de la prueba (según lo que conversamos):
+    // - /precio/peso-chileno => USD/CLP
+    // - /precio/sol-peruano  => USD/PEN
+    // - /precio/dolares      => CLP/USD (al revés)
+    const base = slug === 'dolares' ? 'CLP' : 'USD'
 
-  // ✅ clave: en SSR pegamos al MISMO server Nuxt por 127.0.0.1:PORT
-  const port = process.env.PORT || 3000
-  const ssrOrigin = process.server ? `http://127.0.0.1:${port}` : ''
+    let data
+    try {
+      data = await $axios.$get('/api/rates', { params: { base, target } })
+    } catch (e) {
+      const status = e?.response?.status
+      const url = e?.config?.url
+      const baseURL = e?.config?.baseURL
+      const msg = e?.message
+      const respData = e?.response?.data
 
-  let data
-  try {
-    data = await $axios.$get(`${ssrOrigin}/api/rates`, { params: { base, target } })
-  } catch (e) {
-    console.error('[SSR_RATES_ERROR]', e?.response?.status, e?.message)
-    return error({ statusCode: 500, message: 'Error cargando tasas' })
-  }
+      // eslint-disable-next-line no-console
+      console.error('[SSR_RATES_ERROR]', {
+        slug,
+        base,
+        target,
+        status,
+        url,
+        baseURL,
+        msg,
+        data: respData,
+      })
 
-  const rate = data?.rates?.[target]
-  if (!rate) return error({ statusCode: 404, message: 'Tasa no encontrada' })
+      return error({ statusCode: 500, message: 'Error cargando tasas' })
+    }
 
-  return { slug, base, target, rate, asOf: data.asOf }
-},
+    const rate = data?.rates?.[target]
+    if (!rate) return error({ statusCode: 404, message: 'Tasa no encontrada' })
+
+    return { slug, base, target, rate, asOf: data.asOf, origin }
+  },
 
   computed: {
     canonical() {
-      // ✅ usa origin real del front (sirve SSR + prod)
       return `${this.origin}/precio/${this.slug}`
     },
 
@@ -339,10 +353,14 @@ export default {
       return d.toISOString().slice(11, 16)
     },
 
+    // Navbar flag = "local" (la moneda objetivo)
     localFlag() {
       return FLAG_BY_TARGET[this.target] || FLAG_BY_TARGET.CLP
     },
 
+    // Hero flags (grandes)
+    // - Para dolares: atrás USA, adelante Chile (porque CLP -> USD)
+    // - Para CLP/PEN: atrás local, adelante USA (porque USD -> local)
     localFlagLarge() {
       if (this.slug === 'dolares') return FLAG_BY_TARGET.USD
       return FLAG_BY_TARGET[this.target] || FLAG_BY_TARGET.CLP
@@ -355,9 +373,24 @@ export default {
 
     currencyOptions() {
       return [
-        { slug: 'peso-chileno', label: 'Peso chileno', pair: 'USD → CLP', flag: FLAG_BY_TARGET.CLP },
-        { slug: 'sol-peruano', label: 'Sol peruano', pair: 'USD → PEN', flag: FLAG_BY_TARGET.PEN },
-        { slug: 'dolares', label: 'Dólares', pair: 'CLP → USD', flag: FLAG_BY_TARGET.USD },
+        {
+          slug: 'peso-chileno',
+          label: 'Peso chileno',
+          pair: 'USD → CLP',
+          flag: FLAG_BY_TARGET.CLP,
+        },
+        {
+          slug: 'sol-peruano',
+          label: 'Sol peruano',
+          pair: 'USD → PEN',
+          flag: FLAG_BY_TARGET.PEN,
+        },
+        {
+          slug: 'dolares',
+          label: 'Dólares',
+          pair: 'CLP → USD',
+          flag: FLAG_BY_TARGET.USD,
+        },
       ]
     },
   },
@@ -370,9 +403,13 @@ export default {
       title,
       meta: [
         { hid: 'description', name: 'description', content: description },
+
+        // Open Graph
         { hid: 'og:title', property: 'og:title', content: title },
         { hid: 'og:description', property: 'og:description', content: description },
         { hid: 'og:type', property: 'og:type', content: 'website' },
+
+        // Twitter
         { hid: 'twitter:card', name: 'twitter:card', content: 'summary_large_image' },
         { hid: 'twitter:title', name: 'twitter:title', content: title },
         { hid: 'twitter:description', name: 'twitter:description', content: description },

@@ -1,37 +1,28 @@
 // front/nuxt.config.js
+const isProd = process.env.NODE_ENV === 'production'
+const port = process.env.PORT || 3000
 
 export default {
   ssr: true,
   target: 'server',
   components: true,
 
-  /*
-   * ✅ MUY IMPORTANTE
-   * Montamos /api en el MISMO servidor Nuxt.
-   * Esto evita que SSR pegue al BACK (Cloudflare 429).
-   */
   serverMiddleware: [{ path: '/api', handler: '~/server/api/index.js' }],
 
   modules: ['@nuxtjs/axios'],
 
-  /*
-   * ✅ Axios SAME-ORIGIN
-   * - Browser: siempre same-origin (dominio del front)
-   * - SSR: debe llamar a ESTE MISMO server usando PORT (Render)
-   *
-   * ⚠️ Importante:
-   * NO uses API_BASE_URL aquí, porque si apunta al back, vuelve el 429.
-   */
   publicRuntimeConfig: {
     axios: {
-      browserBaseURL: '/', // browser -> front
+      browserBaseURL: '/', // browser => same-origin
     },
   },
 
   privateRuntimeConfig: {
     axios: {
-      // SSR -> self-call al server Nuxt actual (Render)
-      baseURL: `http://127.0.0.1:${process.env.PORT || 3000}`,
+      // SSR => se llama a sí mismo
+      baseURL: isProd
+        ? `http://127.0.0.1:${port}` // Render/producción
+        : `http://localhost:${port}`, // local
     },
   },
 
@@ -40,10 +31,7 @@ export default {
   build: {
     postcss: {
       postcssOptions: {
-        plugins: {
-          tailwindcss: {},
-          autoprefixer: {},
-        },
+        plugins: { tailwindcss: {}, autoprefixer: {} },
       },
     },
   },
