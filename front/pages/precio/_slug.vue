@@ -305,8 +305,9 @@ export default {
 
     let data
     try {
-      data = await $axios.$get('/api/rates', { params: { base, target } })
-    } catch (e) {
+        data = await $axios.$get(`${origin}/api/rates`, {
+          params: { base, target },
+        })    } catch (e) {
       const status = e?.response?.status
       const url = e?.config?.url
       const baseURL = e?.config?.baseURL
