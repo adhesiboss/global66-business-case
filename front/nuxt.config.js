@@ -10,28 +10,29 @@ export default {
    * Montamos /api en el MISMO servidor Nuxt.
    * Esto evita que SSR pegue al BACK (Cloudflare 429).
    */
-  serverMiddleware: [
-    { path: '/api', handler: '~/server/api/index.js' },
-  ],
+  serverMiddleware: [{ path: '/api', handler: '~/server/api/index.js' }],
 
   modules: ['@nuxtjs/axios'],
 
   /*
    * ✅ Axios SAME-ORIGIN
-   * - En SSR: $axios('/api/...') pega al mismo server Nuxt
-   * - En Browser: igual (mismo dominio del front)
+   * - Browser: siempre same-origin (dominio del front)
+   * - SSR: debe llamar a ESTE MISMO server usando PORT (Render)
    *
-   * NO apuntamos al back externo.
+   * Si dejas baseURL='/' en SSR, Node a veces cae en ::1:80 (ECONNREFUSED)
    */
   publicRuntimeConfig: {
     axios: {
-      browserBaseURL: '/', // siempre front
+      browserBaseURL: '/', // siempre front (browser)
     },
   },
 
   privateRuntimeConfig: {
     axios: {
-      baseURL: '/', // SSR usa mismo servidor
+      // SSR -> self-call al Nuxt server actual
+      baseURL:
+        process.env.API_BASE_URL ||
+        `http://127.0.0.1:${process.env.PORT || 3000}`,
     },
   },
 
@@ -55,8 +56,6 @@ export default {
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { hid: 'format-detection', name: 'format-detection', content: 'telephone=no' },
     ],
-    link: [
-      { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
-    ],
+    link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
   },
 }
