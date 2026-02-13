@@ -2,36 +2,48 @@
 module.exports = {
   content: [
     './components/**/*.{vue,js}',
-    './layouts/**/*.vue',
-    './pages/**/*.vue',
-    './plugins/**/*.{js,ts}',
+    './layouts/**/*.{vue,js}',
+    './pages/**/*.{vue,js}',
+    './plugins/**/*.{js}',
+    './nuxt.config.{js,ts}',
   ],
   theme: {
     extend: {
       colors: {
-        // Brand (tu base)
-        primary: '#2F4FB2',
-        accent: '#00E38C',
-
-        // Semantic (para maquetar como Figma, sin depender de gray-*)
-        ink: '#0B1220',          // texto principal
-        muted: '#667085',        // texto secundario
-        surface: '#FFFFFF',      // cards
-        canvas: '#F6F7FB',       // fondo página
-        border: '#E6E8F0',       // borde suave
-
-        // Opcionales (si los usas en el hero/glow)
-        soft: '#EEF1F7',         // caja gris del hero
+        // Tokens semánticos (Figma-like)
+        primary: '#2F4FB2', // main blue
+        accent: '#00E38C', // green accent
+        ink: '#0B1220', // dark text
+        muted: '#667085', // secondary text
+        surface: '#FFFFFF',
+        panel: '#F4F7FF', // light panel bg
       },
-
-      boxShadow: {
-        soft: '0 12px 32px rgba(11, 18, 32, 0.10)',
-        glow: '0 0 60px rgba(47, 79, 178, 0.25)',
-      },
-
       borderRadius: {
         xl: '16px',
         '2xl': '20px',
+        '3xl': '24px',
+      },
+      boxShadow: {
+        // Token de sombra suave (equivalente a tu "shadow-soft")
+        soft: '0 12px 32px rgba(11, 18, 32, 0.10)',
+      },
+      fontFamily: {
+        // Mantiene look moderno similar al default, pero tokenizado
+        sans: [
+          'ui-sans-serif',
+          'system-ui',
+          '-apple-system',
+          'Segoe UI',
+          'Roboto',
+          'Ubuntu',
+          'Cantarell',
+          'Noto Sans',
+          'sans-serif',
+        ],
+      },
+      letterSpacing: {
+        tight: '-0.025em',
+        wide: '0.025em',
       },
     },
   },

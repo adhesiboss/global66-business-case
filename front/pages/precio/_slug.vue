@@ -43,11 +43,44 @@
 
         <!-- RIGHT -->
         <div class="flex items-center gap-5 text-sm font-semibold">
-          <!-- Flag + chevron -->
-          <button type="button" class="hidden md:flex items-center gap-2 opacity-95 hover:opacity-100">
-            <img src="/images/Flag.svg" alt="Chile" class="h-5 w-5" />
-            <span class="text-white/80">⌄</span>
-          </button>
+          <!-- Currency selector (Flag dropdown) -->
+          <div class="relative hidden md:block" @keydown.esc="openCurrency = false">
+            <button
+              type="button"
+              class="flex items-center gap-2 opacity-95 hover:opacity-100"
+              @click="openCurrency = !openCurrency"
+            >
+              <img :src="localFlag.src" :alt="localFlag.alt" class="h-5 w-5" />
+              <span class="text-white/80">⌄</span>
+            </button>
+
+            <!-- Dropdown -->
+            <div
+              v-if="openCurrency"
+              class="absolute right-0 mt-3 w-56 rounded-2xl bg-white text-ink shadow-xl border border-gray-200 overflow-hidden z-[999]"
+            >
+              <button
+                v-for="opt in currencyOptions"
+                :key="opt.slug"
+                type="button"
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-gray-50"
+                @click="goToCurrency(opt.slug)"
+              >
+                <img :src="opt.flag.src" :alt="opt.flag.alt" class="h-5 w-5" />
+                <div class="flex flex-col items-start leading-tight">
+                  <span class="font-semibold">{{ opt.label }}</span>
+                  <span class="text-xs text-muted">{{ opt.pair }}</span>
+                </div>
+              </button>
+            </div>
+
+            <!-- Click outside -->
+            <div
+              v-if="openCurrency"
+              class="fixed inset-0 z-[998]"
+              @click="openCurrency = false"
+            />
+          </div>
 
           <!-- Divider -->
           <div class="hidden md:block h-6 w-px bg-white/30" />
@@ -89,7 +122,6 @@
         <!-- RIGHT (Hero visual) -->
         <div class="relative w-full md:w-[560px] flex justify-center md:justify-end">
           <div class="relative w-[560px] h-[340px] md:scale-[1.02] md:origin-right">
-
             <!-- Glow azul sutil detrás -->
             <div
               class="absolute right-[80px] bottom-[70px] w-[220px] h-[220px]
@@ -104,7 +136,7 @@
                      drop-shadow-[0_18px_30px_rgba(0,0,0,0.18)]"
             />
 
-            <!-- Chile (atrás) -->
+            <!-- LOCAL (atrás) -->
             <div class="absolute left-[95px] top-[52px] w-[230px] h-[230px] z-[10]">
               <div
                 class="absolute inset-0 rounded-full
@@ -113,8 +145,8 @@
               ></div>
               <div class="absolute inset-[10px] rounded-full bg-white shadow-xl"></div>
               <img
-                src="/images/Flag.svg"
-                alt="Chile"
+                :src="localFlagLarge.src"
+                :alt="localFlagLarge.alt"
                 class="absolute inset-[18px] w-[194px] h-[194px] object-cover rounded-full"
               />
             </div>
@@ -128,8 +160,8 @@
               ></div>
               <div class="absolute inset-[10px] rounded-full bg-white shadow-2xl"></div>
               <img
-                src="/images/united-states-of-america.svg"
-                alt="USA"
+                :src="usFlagLarge.src"
+                :alt="usFlagLarge.alt"
                 class="absolute inset-[18px] w-[209px] h-[209px] object-cover rounded-full"
               />
             </div>
@@ -208,8 +240,16 @@
           </h3>
 
           <form class="mt-6 flex flex-col md:flex-row gap-3" @submit.prevent="submitLead">
-            <input v-model.trim="name" class="w-full rounded-xl border border-gray-200 px-4 py-3" placeholder="Nombre" />
-            <input v-model.trim="email" class="w-full rounded-xl border border-gray-200 px-4 py-3" placeholder="Email" />
+            <input
+              v-model.trim="name"
+              class="w-full rounded-xl border border-gray-200 px-4 py-3"
+              placeholder="Nombre"
+            />
+            <input
+              v-model.trim="email"
+              class="w-full rounded-xl border border-gray-200 px-4 py-3"
+              placeholder="Email"
+            />
             <button class="btn-primary bg-gray-900 text-white" type="submit" :disabled="loading">
               {{ loading ? 'Enviando...' : 'Enviar' }}
             </button>
@@ -231,6 +271,12 @@ const CURRENCY_MAP = {
   dolares: 'USD',
 }
 
+const FLAG_BY_TARGET = {
+  CLP: { src: '/images/Flag.svg', alt: 'Chile' }, // CLP
+  PEN: { src: '/images/Flag-1.svg', alt: 'Perú' }, // PEN
+  USD: { src: '/images/united-states-of-america.svg', alt: 'USA' }, // USD
+}
+
 export default {
   data() {
     return {
@@ -238,6 +284,7 @@ export default {
       email: '',
       loading: false,
       status: null,
+      openCurrency: false,
     }
   },
 
@@ -250,33 +297,36 @@ export default {
     const protocol = host.includes('localhost') ? 'http' : 'https'
     const origin = `${protocol}://${host}`
 
-    const base = 'USD'
+    // 👉 Reglas de la prueba (según lo que conversamos):
+    // - /precio/peso-chileno => USD/CLP
+    // - /precio/sol-peruano  => USD/PEN
+    // - /precio/dolares      => CLP/USD (al revés)
+    const base = slug === 'dolares' ? 'CLP' : 'USD'
+
     let data
+    try {
+      data = await $axios.$get('/api/rates', { params: { base, target } })
+    } catch (e) {
+      const status = e?.response?.status
+      const url = e?.config?.url
+      const baseURL = e?.config?.baseURL
+      const msg = e?.message
+      const respData = e?.response?.data
 
-      try {
-    data = await $axios.$get('/api/rates', { params: { base, target } })
-  } catch (e) {
-    // ✅ Log útil en SSR (Render logs)
-    const status = e?.response?.status
-    const url = e?.config?.url
-    const baseURL = e?.config?.baseURL
-    const msg = e?.message
-    const data = e?.response?.data
+      // eslint-disable-next-line no-console
+      console.error('[SSR_RATES_ERROR]', {
+        slug,
+        base,
+        target,
+        status,
+        url,
+        baseURL,
+        msg,
+        data: respData,
+      })
 
-    // eslint-disable-next-line no-console
-    console.error('[SSR_RATES_ERROR]', {
-      slug,
-      base,
-      target,
-      status,
-      url,
-      baseURL,
-      msg,
-      data,
-    })
-
-    return error({ statusCode: 500, message: 'Error cargando tasas' })
-  }
+      return error({ statusCode: 500, message: 'Error cargando tasas' })
+    }
 
     const rate = data?.rates?.[target]
     if (!rate) return error({ statusCode: 404, message: 'Tasa no encontrada' })
@@ -288,16 +338,60 @@ export default {
     canonical() {
       return `${this.origin}/precio/${this.slug}`
     },
+
     formattedRate() {
       return new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 }).format(this.rate)
     },
+
     asOfDate() {
       const d = new Date(this.asOf)
       return d.toISOString().slice(0, 10)
     },
+
     asOfTime() {
       const d = new Date(this.asOf)
       return d.toISOString().slice(11, 16)
+    },
+
+    // Navbar flag = "local" (la moneda objetivo)
+    localFlag() {
+      return FLAG_BY_TARGET[this.target] || FLAG_BY_TARGET.CLP
+    },
+
+    // Hero flags (grandes)
+    // - Para dolares: atrás USA, adelante Chile (porque CLP -> USD)
+    // - Para CLP/PEN: atrás local, adelante USA (porque USD -> local)
+    localFlagLarge() {
+      if (this.slug === 'dolares') return FLAG_BY_TARGET.USD
+      return FLAG_BY_TARGET[this.target] || FLAG_BY_TARGET.CLP
+    },
+
+    usFlagLarge() {
+      if (this.slug === 'dolares') return FLAG_BY_TARGET.CLP
+      return FLAG_BY_TARGET.USD
+    },
+
+    currencyOptions() {
+      return [
+        {
+          slug: 'peso-chileno',
+          label: 'Peso chileno',
+          pair: 'USD → CLP',
+          flag: FLAG_BY_TARGET.CLP,
+        },
+        {
+          slug: 'sol-peruano',
+          label: 'Sol peruano',
+          pair: 'USD → PEN',
+          flag: FLAG_BY_TARGET.PEN,
+        },
+        {
+          slug: 'dolares',
+          label: 'Dólares',
+          pair: 'CLP → USD',
+          flag: FLAG_BY_TARGET.USD,
+        },
+      ]
     },
   },
 
@@ -328,6 +422,12 @@ export default {
   },
 
   methods: {
+    goToCurrency(slug) {
+      this.openCurrency = false
+      if (this.$route.params.slug === slug) return
+      this.$router.push(`/precio/${slug}`)
+    },
+
     async submitLead() {
       this.status = null
       if (!this.name || !this.email) {

@@ -17,6 +17,7 @@ app.get('/health', (_req, res) => res.json({ ok: true }))
 
 // ---------- GET /api/rates ----------
 const MOCK = {
+  // tasas por 1 USD
   base: 'USD',
   rates: { CLP: 987.62, PEN: 3.81, USD: 1 },
   asOf: '2025-10-31T17:51:00Z',
@@ -25,20 +26,48 @@ const MOCK = {
 const isCurrency = (v) => typeof v === 'string' && /^[A-Z]{3}$/.test(v)
 
 app.get('/api/rates', (req, res) => {
-  const base = String(req.query.base || 'USD').toUpperCase()
-  const target = String(req.query.target || '').toUpperCase()
+  try {
+    const base = String(req.query.base || 'USD').toUpperCase()
+    const target = String(req.query.target || '').toUpperCase()
 
-  if (!isCurrency(base)) return res.status(400).json({ error: 'Invalid base currency' })
-  if (target && !isCurrency(target)) return res.status(400).json({ error: 'Invalid target currency' })
-  if (base !== 'USD') return res.status(400).json({ error: 'Only USD base supported (mock)' })
+    // validaciones
+    if (!isCurrency(base)) {
+      return res.status(400).json({ error: 'Invalid base currency. Use ISO-3 (e.g. USD, CLP).' })
+    }
+    if (!isCurrency(target)) {
+      return res.status(400).json({ error: 'Invalid target currency. Use ISO-3 (e.g. USD, CLP).' })
+    }
 
-  if (target) {
-    const rate = MOCK.rates[target]
-    if (!rate) return res.status(404).json({ error: 'Rate not found' })
-    return res.json({ base: 'USD', rates: { [target]: rate }, asOf: MOCK.asOf })
+    const USD_RATES = MOCK.rates
+    const asOf = MOCK.asOf
+
+    // ✅ Caso directo: USD -> target
+    if (base === 'USD') {
+      const rate = USD_RATES[target]
+      if (!rate) return res.status(404).json({ error: 'Rate not found' })
+      return res.json({ base, rates: { [target]: rate }, asOf })
+    }
+
+    // ✅ Caso inverso: base -> USD (CLP->USD, PEN->USD)
+    if (target === 'USD') {
+      const usdToBase = USD_RATES[base]
+      if (!usdToBase) return res.status(404).json({ error: 'Rate not found' })
+      const baseToUsd = 1 / usdToBase
+      return res.json({ base, rates: { USD: baseToUsd }, asOf })
+    }
+
+    // ✅ Cross rate: base != USD y target != USD (vía USD)
+    // base->target = (base->USD) * (USD->target)
+    const usdToBase = USD_RATES[base]
+    const usdToTarget = USD_RATES[target]
+    if (!usdToBase || !usdToTarget) return res.status(404).json({ error: 'Rate not found' })
+
+    const baseToTarget = (1 / usdToBase) * usdToTarget
+    return res.json({ base, rates: { [target]: baseToTarget }, asOf })
+  } catch (e) {
+    console.error('[GET /api/rates] error', e)
+    return res.status(500).json({ error: 'Server error' })
   }
-
-  return res.json(MOCK)
 })
 
 // ---------- POST /api/lead ----------
