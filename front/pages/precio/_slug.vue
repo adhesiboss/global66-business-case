@@ -253,24 +253,30 @@ export default {
     const base = 'USD'
     let data
 
-    try {
-      data = await $axios.$get('/api/rates', { params: { base, target } })
-    } catch (e) {
-      // ✅ SSR debug (ver en Render Logs)
-      // eslint-disable-next-line no-console
-      console.error('[RATES_ERROR]', {
-        message: e?.message,
-        code: e?.code,
-        status: e?.response?.status,
-        data: e?.response?.data,
-        baseURL: $axios?.defaults?.baseURL,
-        params: { base, target },
-        origin,
-        host,
-      })
+      try {
+    data = await $axios.$get('/api/rates', { params: { base, target } })
+  } catch (e) {
+    // ✅ Log útil en SSR (Render logs)
+    const status = e?.response?.status
+    const url = e?.config?.url
+    const baseURL = e?.config?.baseURL
+    const msg = e?.message
+    const data = e?.response?.data
 
-      return error({ statusCode: 500, message: 'Error cargando tasas' })
-    }
+    // eslint-disable-next-line no-console
+    console.error('[SSR_RATES_ERROR]', {
+      slug,
+      base,
+      target,
+      status,
+      url,
+      baseURL,
+      msg,
+      data,
+    })
+
+    return error({ statusCode: 500, message: 'Error cargando tasas' })
+  }
 
     const rate = data?.rates?.[target]
     if (!rate) return error({ statusCode: 404, message: 'Tasa no encontrada' })
