@@ -288,57 +288,56 @@ export default {
     }
   },
 
-  async asyncData({ params, $axios, error, req }) {
-    const slug = params.slug
-    const target = CURRENCY_MAP[slug]
-    if (!target) return error({ statusCode: 404, message: 'Divisa no soportada' })
+  async asyncData({ params, $axios, error }) {
+  const slug = params.slug
+  const target = CURRENCY_MAP[slug]
 
-    const host = req?.headers?.host || 'localhost:3000'
-    const protocol = host.includes('localhost') ? 'http' : 'https'
-    const origin = `${protocol}://${host}`
+  if (!target) {
+    return error({ statusCode: 404, message: 'Divisa no soportada' })
+  }
 
-    // 👉 Reglas de la prueba (según lo que conversamos):
-    // - /precio/peso-chileno => USD/CLP
-    // - /precio/sol-peruano  => USD/PEN
-    // - /precio/dolares      => CLP/USD (al revés)
-    const base = slug === 'dolares' ? 'CLP' : 'USD'
+  // Reglas de la prueba:
+  // peso-chileno  => USD/CLP
+  // sol-peruano   => USD/PEN
+  // dolares       => CLP/USD
+  const base = slug === 'dolares' ? 'CLP' : 'USD'
 
-    let data
-    try {
-        data = await $axios.$get(`${origin}/api/rates`, {
-          params: { base, target },
-        })    } catch (e) {
-      const status = e?.response?.status
-      const url = e?.config?.url
-      const baseURL = e?.config?.baseURL
-      const msg = e?.message
-      const respData = e?.response?.data
-
-      // eslint-disable-next-line no-console
-      console.error('[SSR_RATES_ERROR]', {
-        slug,
-        base,
-        target,
-        status,
-        url,
-        baseURL,
-        msg,
-        data: respData,
-      })
-
-      return error({ statusCode: 500, message: 'Error cargando tasas' })
-    }
+  try {
+    // 👇 IMPORTANTE: llamada relativa al serverMiddleware local
+    const data = await $axios.$get('/api/rates', {
+      params: { base, target },
+    })
 
     const rate = data?.rates?.[target]
-    if (!rate) return error({ statusCode: 404, message: 'Tasa no encontrada' })
 
-    return { slug, base, target, rate, asOf: data.asOf, origin }
-  },
+    if (!rate) {
+      return error({ statusCode: 404, message: 'Tasa no encontrada' })
+    }
+
+    return {
+      slug,
+      base,
+      target,
+      rate,
+      asOf: data.asOf,
+      origin: '', // no dependemos de host dinámico
+    }
+  } catch (e) {
+    console.error('[SSR_RATES_ERROR]', {
+      slug,
+      base,
+      target,
+      status: e?.response?.status,
+      message: e?.message,
+    })
+
+    return error({ statusCode: 500, message: 'Error cargando tasas' })
+  }
+},
 
   computed: {
     canonical() {
-      return `${this.origin}/precio/${this.slug}`
-    },
+return `/precio/${this.slug}`    },
 
     formattedRate() {
       return new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 }).format(this.rate)
