@@ -114,7 +114,7 @@
             1 {{ base }} = {{ formattedRate }} {{ target }}
           </div>
 
-          <p class="mt-4 md:mt-6 text-base md:text-lg opacity-90">
+          <p class="mt-4 md:mt-6 text-base md:text-xl opacity-90">
             Tipo de cambio para {{ asOfDate }} a las {{ asOfTime }} UTC
           </p>
         </div>
@@ -124,7 +124,7 @@
           <div class="relative w-[560px] h-[340px] md:scale-[1.02] md:origin-right">
             <!-- Glow azul sutil detrás -->
             <div
-              class="absolute right-[80px] bottom-[70px] w-[220px] h-[220px]
+              class="absolute right-[80px] bottom-[70px] w-[250px] h-[250px]
                      rounded-full bg-blue-400/20 blur-3xl z-[1]"
             ></div>
 
@@ -132,18 +132,18 @@
             <img
               src="/images/stand.svg"
               alt=""
-              class="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-[560px] z-[2]
+              class="absolute bottom-[-95px] left-1/2 -translate-x-1/2 w-[560px] z-[2]
                      drop-shadow-[0_18px_30px_rgba(0,0,0,0.18)]"
             />
 
             <!-- LOCAL (atrás) -->
             <div class="absolute left-[95px] top-[52px] w-[230px] h-[230px] z-[10]">
               <div
-                class="absolute inset-0 rounded-full
-                       bg-gradient-to-br from-white/30 to-blue-200/20"
-                style="backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);"
+                class="absolute -inset-[14px] rounded-full
+         bg-gradient-to-br from-white/30 to-blue-200/20"
+  style="backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);"
               ></div>
-              <div class="absolute inset-[10px] rounded-full bg-white shadow-xl"></div>
+              <div class="absolute inset-[14px] rounded-full bg-white shadow-xl"></div>
               <img
                 :src="localFlagLarge.src"
                 :alt="localFlagLarge.alt"
@@ -154,9 +154,9 @@
             <!-- USA (adelante) -->
             <div class="absolute left-[255px] top-[62px] w-[245px] h-[245px] z-[20]">
               <div
-                class="absolute inset-0 rounded-full
-                       bg-gradient-to-br from-white/35 to-blue-200/25"
-                style="backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);"
+                class="absolute -inset-[14px] rounded-full
+         bg-gradient-to-br from-white/30 to-blue-200/20"
+  style="backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);"
               ></div>
               <div class="absolute inset-[10px] rounded-full bg-white shadow-2xl"></div>
               <img
