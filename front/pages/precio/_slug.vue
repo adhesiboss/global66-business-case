@@ -306,9 +306,8 @@ export default {
 
   let data
   try {
-    data = await $axios.$get('/api/rates', {
-      params: { base, target },
-    })
+   data = await $axios.$get('/api/rates', {
+  params: { base, target } })
   } catch (e) {
     console.error('[SSR_RATES_ERROR]', e?.response?.status, e?.message)
     return error({ statusCode: 500, message: 'Error cargando tasas' })

@@ -1,15 +1,17 @@
 // front/server/api/index.js
 const express = require('express')
-const router = express.Router()
+const app = express()
 
-router.get('/rates', (req, res) => {
+app.get('/rates', (req, res) => {
   try {
     const base = String(req.query.base || 'USD').toUpperCase()
     const target = String(req.query.target || '').toUpperCase()
 
     const isCode = (v) => /^[A-Z]{3}$/.test(v)
     if (!isCode(base) || !isCode(target)) {
-      return res.status(400).json({ error: 'Invalid query. Use base/target as ISO-3 (e.g. USD, CLP).' })
+      return res
+        .status(400)
+        .json({ error: 'Invalid query. Use base/target as ISO-3 (e.g. USD, CLP).' })
     }
 
     const USD_RATES = { CLP: 987.62, PEN: 3.81, USD: 1 }
@@ -42,4 +44,4 @@ router.get('/rates', (req, res) => {
   }
 })
 
-module.exports = router
+module.exports = app
