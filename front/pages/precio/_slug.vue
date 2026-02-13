@@ -288,7 +288,13 @@ export default {
     }
   },
 
-  async asyncData({ params, $axios, error }) {
+ async asyncData({ params, $axios, error }) { 
+  const CURRENCY_MAP = {
+    'peso-chileno': 'CLP',
+    'sol-peruano': 'PEN',
+    dolares: 'USD',
+  }
+
   const slug = params.slug
   const target = CURRENCY_MAP[slug]
 
@@ -296,48 +302,35 @@ export default {
     return error({ statusCode: 404, message: 'Divisa no soportada' })
   }
 
-  // Reglas de la prueba:
-  // peso-chileno  => USD/CLP
-  // sol-peruano   => USD/PEN
-  // dolares       => CLP/USD
   const base = slug === 'dolares' ? 'CLP' : 'USD'
 
+  let data
   try {
-    // 👇 IMPORTANTE: llamada relativa al serverMiddleware local
-    const data = await $axios.$get('/api/rates', {
+    data = await $axios.$get('/api/rates', {
       params: { base, target },
     })
-
-    const rate = data?.rates?.[target]
-
-    if (!rate) {
-      return error({ statusCode: 404, message: 'Tasa no encontrada' })
-    }
-
-    return {
-      slug,
-      base,
-      target,
-      rate,
-      asOf: data.asOf,
-      origin: '', // no dependemos de host dinámico
-    }
   } catch (e) {
-    console.error('[SSR_RATES_ERROR]', {
-      slug,
-      base,
-      target,
-      status: e?.response?.status,
-      message: e?.message,
-    })
-
+    console.error('[SSR_RATES_ERROR]', e?.response?.status, e?.message)
     return error({ statusCode: 500, message: 'Error cargando tasas' })
+  }
+
+  const rate = data?.rates?.[target]
+  if (!rate) {
+    return error({ statusCode: 404, message: 'Tasa no encontrada' })
+  }
+
+  return {
+    slug,
+    base,
+    target,
+    rate,
+    asOf: data.asOf,
   }
 },
 
   computed: {
     canonical() {
-return `/precio/${this.slug}`    },
+return `https://global66-business-case-front.onrender.com/precio/${this.slug}`  },
 
     formattedRate() {
       return new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 }).format(this.rate)
