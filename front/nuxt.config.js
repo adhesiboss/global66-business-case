@@ -19,20 +19,19 @@ export default {
    * - Browser: siempre same-origin (dominio del front)
    * - SSR: debe llamar a ESTE MISMO server usando PORT (Render)
    *
-   * Si dejas baseURL='/' en SSR, Node a veces cae en ::1:80 (ECONNREFUSED)
+   * ⚠️ Importante:
+   * NO uses API_BASE_URL aquí, porque si apunta al back, vuelve el 429.
    */
   publicRuntimeConfig: {
     axios: {
-      browserBaseURL: '/', // siempre front (browser)
+      browserBaseURL: '/', // browser -> front
     },
   },
 
   privateRuntimeConfig: {
     axios: {
-      // SSR -> self-call al Nuxt server actual
-      baseURL:
-        process.env.API_BASE_URL ||
-        `http://127.0.0.1:${process.env.PORT || 3000}`,
+      // SSR -> self-call al server Nuxt actual (Render)
+      baseURL: `http://127.0.0.1:${process.env.PORT || 3000}`,
     },
   },
 
