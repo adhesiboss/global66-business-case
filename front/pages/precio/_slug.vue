@@ -272,9 +272,9 @@ const CURRENCY_MAP = {
 }
 
 const FLAG_BY_TARGET = {
-  CLP: { src: '/images/Flag.svg', alt: 'Chile' }, // CLP
-  PEN: { src: '/images/Flag-1.svg', alt: 'Perú' }, // PEN
-  USD: { src: '/images/united-states-of-america.svg', alt: 'USA' }, // USD
+  CLP: { src: '/images/Flag.svg', alt: 'Chile' },
+  PEN: { src: '/images/Flag-1.svg', alt: 'Perú' },
+  USD: { src: '/images/united-states-of-america.svg', alt: 'USA' },
 }
 
 export default {
@@ -288,48 +288,45 @@ export default {
     }
   },
 
- async asyncData({ params, $axios, error }) { 
-  const CURRENCY_MAP = {
-    'peso-chileno': 'CLP',
-    'sol-peruano': 'PEN',
-    dolares: 'USD',
-  }
+  async asyncData({ params, $axios, error, req }) {
+    const slug = params.slug
+    const target = CURRENCY_MAP[slug]
+    if (!target) return error({ statusCode: 404, message: 'Divisa no soportada' })
 
-  const slug = params.slug
-  const target = CURRENCY_MAP[slug]
+    // regla: /precio/dolares => CLP -> USD
+    const base = slug === 'dolares' ? 'CLP' : 'USD'
 
-  if (!target) {
-    return error({ statusCode: 404, message: 'Divisa no soportada' })
-  }
+    // ✅ CLAVE: en SSR construimos el ORIGIN del FRONT y pegamos al MISMO serverMiddleware
+    const host = req?.headers?.host || 'localhost:3000'
+    const proto =
+      (req?.headers?.['x-forwarded-proto'] || '').toString().split(',')[0].trim() ||
+      (host.includes('localhost') ? 'http' : 'https')
+    const origin = `${proto}://${host}`
 
-  const base = slug === 'dolares' ? 'CLP' : 'USD'
+    let data
+    try {
+      data = await $axios.$get(`${origin}/api/rates`, { params: { base, target } })
+    } catch (e) {
+      console.error('[SSR_RATES_ERROR]', {
+        status: e?.response?.status,
+        msg: e?.message,
+        url: e?.config?.url,
+        baseURL: e?.config?.baseURL,
+      })
+      return error({ statusCode: 500, message: 'Error cargando tasas' })
+    }
 
-  let data
-  try {
-   data = await $axios.$get('/api/rates', {
-  params: { base, target } })
-  } catch (e) {
-    console.error('[SSR_RATES_ERROR]', e?.response?.status, e?.message)
-    return error({ statusCode: 500, message: 'Error cargando tasas' })
-  }
+    const rate = data?.rates?.[target]
+    if (!rate) return error({ statusCode: 404, message: 'Tasa no encontrada' })
 
-  const rate = data?.rates?.[target]
-  if (!rate) {
-    return error({ statusCode: 404, message: 'Tasa no encontrada' })
-  }
-
-  return {
-    slug,
-    base,
-    target,
-    rate,
-    asOf: data.asOf,
-  }
-},
+    return { slug, base, target, rate, asOf: data.asOf, origin }
+  },
 
   computed: {
     canonical() {
-return `https://global66-business-case-front.onrender.com/precio/${this.slug}`  },
+      // ✅ usa origin real del front (sirve SSR + prod)
+      return `${this.origin}/precio/${this.slug}`
+    },
 
     formattedRate() {
       return new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 }).format(this.rate)
@@ -345,14 +342,10 @@ return `https://global66-business-case-front.onrender.com/precio/${this.slug}`  
       return d.toISOString().slice(11, 16)
     },
 
-    // Navbar flag = "local" (la moneda objetivo)
     localFlag() {
       return FLAG_BY_TARGET[this.target] || FLAG_BY_TARGET.CLP
     },
 
-    // Hero flags (grandes)
-    // - Para dolares: atrás USA, adelante Chile (porque CLP -> USD)
-    // - Para CLP/PEN: atrás local, adelante USA (porque USD -> local)
     localFlagLarge() {
       if (this.slug === 'dolares') return FLAG_BY_TARGET.USD
       return FLAG_BY_TARGET[this.target] || FLAG_BY_TARGET.CLP
@@ -365,24 +358,9 @@ return `https://global66-business-case-front.onrender.com/precio/${this.slug}`  
 
     currencyOptions() {
       return [
-        {
-          slug: 'peso-chileno',
-          label: 'Peso chileno',
-          pair: 'USD → CLP',
-          flag: FLAG_BY_TARGET.CLP,
-        },
-        {
-          slug: 'sol-peruano',
-          label: 'Sol peruano',
-          pair: 'USD → PEN',
-          flag: FLAG_BY_TARGET.PEN,
-        },
-        {
-          slug: 'dolares',
-          label: 'Dólares',
-          pair: 'CLP → USD',
-          flag: FLAG_BY_TARGET.USD,
-        },
+        { slug: 'peso-chileno', label: 'Peso chileno', pair: 'USD → CLP', flag: FLAG_BY_TARGET.CLP },
+        { slug: 'sol-peruano', label: 'Sol peruano', pair: 'USD → PEN', flag: FLAG_BY_TARGET.PEN },
+        { slug: 'dolares', label: 'Dólares', pair: 'CLP → USD', flag: FLAG_BY_TARGET.USD },
       ]
     },
   },
@@ -395,13 +373,9 @@ return `https://global66-business-case-front.onrender.com/precio/${this.slug}`  
       title,
       meta: [
         { hid: 'description', name: 'description', content: description },
-
-        // Open Graph
         { hid: 'og:title', property: 'og:title', content: title },
         { hid: 'og:description', property: 'og:description', content: description },
         { hid: 'og:type', property: 'og:type', content: 'website' },
-
-        // Twitter
         { hid: 'twitter:card', name: 'twitter:card', content: 'summary_large_image' },
         { hid: 'twitter:title', name: 'twitter:title', content: title },
         { hid: 'twitter:description', name: 'twitter:description', content: description },
